@@ -269,15 +269,47 @@
       position: relative;
     }
 
-    .car-canvas-wrap {
+    .car-viewer {
       position: relative;
       width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #050505;
+      overflow: hidden;
+      border-radius: 6px;
     }
 
-    #carCanvas {
+    .car-img {
       width: 100%;
-      height: auto;
+      height: 100%;
+      object-fit: cover;
       display: block;
+      transition: opacity 0.35s ease;
+    }
+
+    .car-img.loading { opacity: 0; }
+
+    .color-overlay {
+      position: absolute;
+      inset: 0;
+      mix-blend-mode: multiply;
+      opacity: 0.52;
+      pointer-events: none;
+      transition: background 0.3s;
+    }
+
+    .car-type-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(200,169,91,0.4);
+      color: var(--accent);
+      font-size: 0.65rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 2px;
+      backdrop-filter: blur(6px);
     }
 
     .car-info {
@@ -394,12 +426,46 @@
 
 <header>
   <div class="logo">
-    <svg class="logo-star" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="22" cy="22" r="21" stroke="#c8a95b" stroke-width="1.5"/>
-      <circle cx="22" cy="22" r="17" stroke="#c8a95b" stroke-width="0.5" opacity="0.4"/>
-      <path d="M22 22 L22 2" stroke="#c8a95b" stroke-width="1.8" stroke-linecap="round"/>
-      <path d="M22 22 L39 32" stroke="#c8a95b" stroke-width="1.8" stroke-linecap="round"/>
-      <path d="M22 22 L5 32" stroke="#c8a95b" stroke-width="1.8" stroke-linecap="round"/>
+    <svg class="logo-star" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="lgBody" cx="38%" cy="32%" r="68%">
+          <stop offset="0%" stop-color="#383838"/>
+          <stop offset="60%" stop-color="#111"/>
+          <stop offset="100%" stop-color="#050505"/>
+        </radialGradient>
+        <linearGradient id="lgRing" x1="15%" y1="10%" x2="85%" y2="90%">
+          <stop offset="0%"   stop-color="#444"/>
+          <stop offset="22%"  stop-color="#b8b8b8"/>
+          <stop offset="45%"  stop-color="#f4f4f4"/>
+          <stop offset="68%"  stop-color="#888"/>
+          <stop offset="100%" stop-color="#333"/>
+        </linearGradient>
+        <linearGradient id="lgStar" x1="10%" y1="0%" x2="90%" y2="100%">
+          <stop offset="0%"   stop-color="#c0c0c0"/>
+          <stop offset="30%"  stop-color="#ffffff"/>
+          <stop offset="55%"  stop-color="#d0d0d0"/>
+          <stop offset="100%" stop-color="#606060"/>
+        </linearGradient>
+        <radialGradient id="lgSheen" cx="35%" cy="30%" r="55%">
+          <stop offset="0%"   stop-color="rgba(255,255,255,0.18)"/>
+          <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+        </radialGradient>
+      </defs>
+      <!-- Outer chrome ring -->
+      <circle cx="22" cy="22" r="21" fill="url(#lgRing)"/>
+      <!-- Ring edge highlight -->
+      <circle cx="22" cy="22" r="20.2" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.6"/>
+      <!-- Dark inner body -->
+      <circle cx="22" cy="22" r="17.5" fill="url(#lgBody)"/>
+      <!-- Three-pointed star: tips at top(22,5), bottom-right(37,30.5), bottom-left(7,30.5) -->
+      <!-- Concave inner points at radius 8: right(28.9,18), bottom(22,30), left(15.1,18) -->
+      <polygon points="22,5 28.9,18 37,30.5 22,30 7,30.5 15.1,18" fill="url(#lgStar)"/>
+      <!-- Star inner ring border -->
+      <circle cx="22" cy="22" r="17.5" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>
+      <!-- Sphere sheen highlight -->
+      <circle cx="22" cy="22" r="17.5" fill="url(#lgSheen)"/>
+      <!-- Center cap -->
+      <circle cx="22" cy="22" r="2.8" fill="#1a1a1a" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
     </svg>
     <div>
       <div class="logo-text">Mercedes-<span>AMG</span></div>
@@ -486,8 +552,10 @@
   <!-- DISPLAY -->
   <main class="display">
     <div class="car-stage">
-      <div class="car-canvas-wrap">
-        <canvas id="carCanvas" width="820" height="420"></canvas>
+      <div class="car-viewer">
+        <img id="carImg" class="car-img" src="" alt="Mercedes-AMG" />
+        <div id="colorOverlay" class="color-overlay"></div>
+        <div id="carTypeBadge" class="car-type-badge"></div>
       </div>
       <div class="car-info">
         <div class="car-name" id="carName">AMG <strong>GT 63 S</strong></div>
@@ -540,8 +608,8 @@ const AMG_MODELS = {
   "GLC 63 AMG":    { years:[2018,2019,2020,2021,2022], base:79000, hp:503, torque:516, weight:4178, type:"suv" },
   "GLE 53 AMG":    { years:[2020,2021,2022,2023,2024,2025], base:76000, hp:429, torque:384, weight:4938, type:"suv" },
   "GLE 63 S AMG":  { years:[2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025], base:105000, hp:603, torque:627, weight:5203, type:"suv" },
-  "G 63 AMG":      { years:[2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025], base:156000, hp:577, torque:627, weight:5639, type:"suv" },
-  "G 65 AMG":      { years:[2013,2014,2015,2016,2017], base:218000, hp:621, torque:738, weight:5754, type:"suv" },
+  "G 63 AMG":      { years:[2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025], base:156000, hp:577, torque:627, weight:5639, type:"gwagon" },
+  "G 65 AMG":      { years:[2013,2014,2015,2016,2017], base:218000, hp:621, torque:738, weight:5754, type:"gwagon" },
   "CLA 45 AMG":    { years:[2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024], base:53000, hp:415, torque:369, weight:3373, type:"sedan" },
   "A 45 AMG":      { years:[2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025], base:55000, hp:421, torque:369, weight:3263, type:"hatchback" },
   "AMG ONE":       { years:[2022,2023,2024], base:2700000, hp:1063, torque:664, weight:3263, type:"hypercar" },
@@ -767,570 +835,50 @@ function bindSliders() {
 }
 
 // ─────────────────────────────────────────────
-//  CANVAS RENDERER
+//  PHOTO MAP (Unsplash — free licence, no attribution required)
 // ─────────────────────────────────────────────
+const TYPE_IMAGES = {
+  sedan:     'https://images.unsplash.com/photo-YApS6TjKJ9c',
+  coupe:     'https://images.unsplash.com/photo-3WQuWE5OttA',
+  suv:       'https://images.unsplash.com/photo-GJNLlyfSrf8',
+  gwagon:    'https://images.unsplash.com/photo-wEPQUXHbv7U',
+  sportscar: 'https://images.unsplash.com/photo-KhBBk--J5lY',
+  hypercar:  'https://images.unsplash.com/photo-tU6yLqBstQ0',
+  roadster:  'https://images.unsplash.com/photo-gZgViaIpm9U',
+  hatchback: 'https://images.unsplash.com/photo-HpqqJx4iIYg',
+};
+
+const TYPE_LABELS = {
+  sedan: 'Sedan', coupe: 'Coupe', suv: 'SUV',
+  gwagon: 'G-Wagon', sportscar: 'Sports Car',
+  hypercar: 'Hypercar', roadster: 'Roadster', hatchback: 'Hatchback',
+};
+
 function render() {
-  const canvas = document.getElementById('carCanvas');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-
-  const model = AMG_MODELS[state.model] || AMG_MODELS["GT 63 S AMG"];
+  const model = AMG_MODELS[state.model] || Object.values(AMG_MODELS)[0];
   const color = COLORS[state.colorIdx];
-  const wheel = WHEELS[state.wheelIdx];
-  const interior = INTERIORS[state.interiorIdx];
-  const type = model.type;
+  const type  = model.type;
 
-  const rideOffset = state.ride * 0.3;
-  const cy = H * 0.62 + rideOffset;
+  // Car photo
+  const img = document.getElementById('carImg');
+  const baseUrl = TYPE_IMAGES[type] || TYPE_IMAGES.sedan;
+  const src = baseUrl + '?auto=format&fit=crop&w=1200&q=85';
+  if (img.src !== src) {
+    img.classList.add('loading');
+    img.onload = () => img.classList.remove('loading');
+    img.onerror = () => img.classList.remove('loading');
+    img.src = src;
+  }
 
-  drawCar(ctx, W, H, cy, color, wheel, interior, type);
-  drawReflection(ctx, W, H, cy, color, type);
-  drawGround(ctx, W, H, cy);
+  // Color overlay
+  document.getElementById('colorOverlay').style.background = color.hex;
+
+  // Type badge
+  document.getElementById('carTypeBadge').textContent = TYPE_LABELS[type] || type;
+
   updateInfo(model);
 }
 
-function drawGround(ctx, W, H, cy) {
-  const g = ctx.createLinearGradient(0, cy + 40, 0, H);
-  g.addColorStop(0, 'rgba(200,169,91,0.08)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, cy + 40, W, H - cy - 40);
-
-  ctx.beginPath();
-  ctx.ellipse(W/2, cy + 44, 340, 12, 0, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fill();
-}
-
-function carBodyPath(ctx, W, H, cy, type) {
-  const cx = W / 2;
-  ctx.beginPath();
-  if (type === 'suv') {
-    ctx.moveTo(cx - 280, cy + 40);
-    ctx.lineTo(cx - 300, cy - 10);
-    ctx.lineTo(cx - 240, cy - 90);
-    ctx.lineTo(cx - 140, cy - 115);
-    ctx.lineTo(cx + 100, cy - 115);
-    ctx.lineTo(cx + 220, cy - 85);
-    ctx.lineTo(cx + 280, cy - 20);
-    ctx.lineTo(cx + 290, cy + 40);
-  } else if (type === 'roadster') {
-    ctx.moveTo(cx - 280, cy + 40);
-    ctx.lineTo(cx - 290, cy + 5);
-    ctx.lineTo(cx - 180, cy - 55);
-    ctx.lineTo(cx - 50, cy - 75);
-    ctx.lineTo(cx + 80, cy - 75);
-    ctx.lineTo(cx + 230, cy - 40);
-    ctx.lineTo(cx + 280, cy + 10);
-    ctx.lineTo(cx + 285, cy + 40);
-  } else if (type === 'hatchback') {
-    ctx.moveTo(cx - 250, cy + 40);
-    ctx.lineTo(cx - 265, cy);
-    ctx.lineTo(cx - 190, cy - 95);
-    ctx.lineTo(cx - 60, cy - 110);
-    ctx.lineTo(cx + 120, cy - 108);
-    ctx.lineTo(cx + 220, cy - 80);
-    ctx.lineTo(cx + 260, cy + 10);
-    ctx.lineTo(cx + 265, cy + 40);
-  } else if (type === 'sportscar' || type === 'hypercar') {
-    ctx.moveTo(cx - 290, cy + 40);
-    ctx.lineTo(cx - 300, cy + 10);
-    ctx.lineTo(cx - 200, cy - 50);
-    ctx.lineTo(cx - 60, cy - 75);
-    ctx.lineTo(cx + 100, cy - 72);
-    ctx.lineTo(cx + 240, cy - 30);
-    ctx.lineTo(cx + 295, cy + 15);
-    ctx.lineTo(cx + 295, cy + 40);
-  } else { // sedan / coupe
-    ctx.moveTo(cx - 280, cy + 40);
-    ctx.lineTo(cx - 295, cy + 5);
-    ctx.lineTo(cx - 220, cy - 60);
-    ctx.lineTo(cx - 80, cy - 100);
-    ctx.lineTo(cx + 80, cy - 100);
-    ctx.lineTo(cx + 210, cy - 60);
-    ctx.lineTo(cx + 285, cy + 5);
-    ctx.lineTo(cx + 285, cy + 40);
-  }
-  ctx.closePath();
-}
-
-function drawCar(ctx, W, H, cy, color, wheel, interior, type) {
-  const cx = W / 2;
-
-  // Body shadow
-  ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.6)';
-  ctx.shadowBlur = 30;
-  ctx.shadowOffsetY = 15;
-  carBodyPath(ctx, W, H, cy, type);
-  ctx.fillStyle = color.hex;
-  ctx.fill();
-  ctx.restore();
-
-  // Body fill with metallic gradient
-  carBodyPath(ctx, W, H, cy, type);
-  const bodyG = ctx.createLinearGradient(cx - 300, cy - 120, cx + 300, cy + 50);
-  if (color.metallic) {
-    const base = hexToRgb(color.hex);
-    bodyG.addColorStop(0, lightenColor(color.hex, 35));
-    bodyG.addColorStop(0.35, lightenColor(color.hex, 18));
-    bodyG.addColorStop(0.6, color.hex);
-    bodyG.addColorStop(0.85, darkenColor(color.hex, 15));
-    bodyG.addColorStop(1, darkenColor(color.hex, 30));
-  } else {
-    bodyG.addColorStop(0, lightenColor(color.hex, 20));
-    bodyG.addColorStop(0.5, color.hex);
-    bodyG.addColorStop(1, darkenColor(color.hex, 25));
-  }
-  ctx.fillStyle = bodyG;
-  ctx.fill();
-
-  // Body stroke
-  carBodyPath(ctx, W, H, cy, type);
-  ctx.strokeStyle = darkenColor(color.hex, 40);
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // Highlight stripe
-  ctx.save();
-  carBodyPath(ctx, W, H, cy, type);
-  ctx.clip();
-  const hlG = ctx.createLinearGradient(cx - 200, cy - 100, cx + 200, cy + 20);
-  hlG.addColorStop(0, 'rgba(255,255,255,0.0)');
-  hlG.addColorStop(0.3, 'rgba(255,255,255,0.12)');
-  hlG.addColorStop(0.5, 'rgba(255,255,255,0.08)');
-  hlG.addColorStop(1, 'rgba(255,255,255,0.0)');
-  ctx.fillStyle = hlG;
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
-
-  // Windows
-  drawWindows(ctx, W, H, cy, type, interior);
-
-  // Wheels
-  const wheelY = cy + 40;
-  const wheelR = type === 'suv' ? 50 : 44;
-  const wX1 = type === 'suv' ? cx - 180 : cx - 175;
-  const wX2 = type === 'suv' ? cx + 170 : cx + 165;
-  drawWheel(ctx, wX1, wheelY, wheelR, wheel.style);
-  drawWheel(ctx, wX2, wheelY, wheelR, wheel.style);
-
-  // Headlights
-  drawHeadlights(ctx, cx, cy, type, color);
-
-  // Taillights
-  drawTaillights(ctx, cx, cy, type);
-
-  // Grille
-  drawGrille(ctx, cx, cy, type, color);
-
-  // AMG badge
-  ctx.font = 'bold 11px "Segoe UI", sans-serif';
-  ctx.fillStyle = '#c8a95b';
-  ctx.letterSpacing = '2px';
-  ctx.fillText('AMG', cx + 200, cy + 20);
-
-  // Night package - black trim
-  if (state.extras.has(1)) {
-    drawNightPackage(ctx, cx, cy, type);
-  }
-
-  // Carbon fibre accents
-  if (state.extras.has(2)) {
-    drawCarbonAccents(ctx, cx, cy, type);
-  }
-}
-
-function drawWindows(ctx, W, H, cy, type, interior) {
-  const cx = W / 2;
-  const tintAlpha = 0.3 + (state.tint / 100) * 0.6;
-
-  ctx.save();
-  carBodyPath(ctx, W, H, cy, type);
-  ctx.clip();
-
-  // Main windshield
-  ctx.beginPath();
-  if (type === 'suv') {
-    ctx.moveTo(cx - 130, cy - 112);
-    ctx.lineTo(cx - 230, cy - 82);
-    ctx.lineTo(cx - 230, cy - 30);
-    ctx.lineTo(cx - 140, cy - 30);
-  } else if (type === 'roadster') {
-    ctx.moveTo(cx - 40, cy - 73);
-    ctx.lineTo(cx - 140, cy - 50);
-    ctx.lineTo(cx - 110, cy - 20);
-    ctx.lineTo(cx + 40, cy - 22);
-  } else if (type === 'sportscar' || type === 'hypercar') {
-    ctx.moveTo(cx - 50, cy - 73);
-    ctx.lineTo(cx - 165, cy - 45);
-    ctx.lineTo(cx - 120, cy - 12);
-    ctx.lineTo(cx + 55, cy - 14);
-  } else {
-    ctx.moveTo(cx - 70, cy - 98);
-    ctx.lineTo(cx - 190, cy - 55);
-    ctx.lineTo(cx - 150, cy - 18);
-    ctx.lineTo(cx + 60, cy - 20);
-  }
-  ctx.closePath();
-
-  const winG = ctx.createLinearGradient(cx - 200, cy - 100, cx, cy);
-  winG.addColorStop(0, `rgba(100,140,180,${tintAlpha})`);
-  winG.addColorStop(1, `rgba(60,100,140,${tintAlpha + 0.1})`);
-  ctx.fillStyle = winG;
-  ctx.fill();
-
-  // Rear window
-  ctx.beginPath();
-  if (type === 'suv') {
-    ctx.moveTo(cx + 105, cy - 112);
-    ctx.lineTo(cx + 205, cy - 80);
-    ctx.lineTo(cx + 200, cy - 30);
-    ctx.lineTo(cx + 110, cy - 30);
-  } else if (type === 'sportscar' || type === 'hypercar') {
-    ctx.moveTo(cx + 60, cy - 70);
-    ctx.lineTo(cx + 200, cy - 25);
-    ctx.lineTo(cx + 180, cy - 10);
-    ctx.lineTo(cx + 65, cy - 12);
-  } else if (type !== 'roadster') {
-    ctx.moveTo(cx + 65, cy - 97);
-    ctx.lineTo(cx + 175, cy - 55);
-    ctx.lineTo(cx + 145, cy - 20);
-    ctx.lineTo(cx + 55, cy - 20);
-  }
-  ctx.closePath();
-  ctx.fillStyle = winG;
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function drawWheel(ctx, x, y, r, style) {
-  // Tire
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#111';
-  ctx.fill();
-  ctx.strokeStyle = '#222';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Rim base
-  ctx.beginPath();
-  ctx.arc(x, y, r * 0.75, 0, Math.PI * 2);
-  const rimG = ctx.createRadialGradient(x - r*0.2, y - r*0.2, 0, x, y, r * 0.75);
-  rimG.addColorStop(0, '#888');
-  rimG.addColorStop(0.5, '#555');
-  rimG.addColorStop(1, '#333');
-  ctx.fillStyle = rimG;
-  ctx.fill();
-
-  const spokes = { '5spoke': 5, 'cross': 10, '10spoke': 10, 'twin': 8, 'mono': 1, 'hre': 5 };
-  const spokeCount = spokes[style] || 5;
-  const innerR = r * 0.2;
-  const outerR = r * 0.72;
-
-  if (style === 'mono') {
-    // Monoblock - solid with cutouts
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      const bx = x + Math.cos(a) * r * 0.5;
-      const by = y + Math.sin(a) * r * 0.5;
-      ctx.beginPath();
-      ctx.arc(bx, by, r * 0.12, 0, Math.PI * 2);
-      ctx.fillStyle = '#1a1a1a';
-      ctx.fill();
-    }
-  } else if (style === 'hre') {
-    // HRE Carbon - dark spokes with bright edges
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      ctx.beginPath();
-      ctx.moveTo(x + Math.cos(a - 0.12) * innerR, y + Math.sin(a - 0.12) * innerR);
-      ctx.lineTo(x + Math.cos(a - 0.07) * outerR, y + Math.sin(a - 0.07) * outerR);
-      ctx.lineTo(x + Math.cos(a + 0.07) * outerR, y + Math.sin(a + 0.07) * outerR);
-      ctx.lineTo(x + Math.cos(a + 0.12) * innerR, y + Math.sin(a + 0.12) * innerR);
-      ctx.fillStyle = '#1a1a1a';
-      ctx.fill();
-      ctx.strokeStyle = '#c8a95b';
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-    }
-  } else {
-    // Standard spoke designs
-    for (let i = 0; i < spokeCount; i++) {
-      const a = (i / spokeCount) * Math.PI * 2 - Math.PI / 2;
-      const w = style === 'twin' ? 0.08 : 0.06;
-      ctx.beginPath();
-      ctx.moveTo(x + Math.cos(a - w) * innerR, y + Math.sin(a - w) * innerR);
-      ctx.lineTo(x + Math.cos(a - w*0.5) * outerR, y + Math.sin(a - w*0.5) * outerR);
-      ctx.lineTo(x + Math.cos(a + w*0.5) * outerR, y + Math.sin(a + w*0.5) * outerR);
-      ctx.lineTo(x + Math.cos(a + w) * innerR, y + Math.sin(a + w) * innerR);
-      ctx.closePath();
-      const sg = ctx.createLinearGradient(
-        x + Math.cos(a) * innerR, y + Math.sin(a) * innerR,
-        x + Math.cos(a) * outerR, y + Math.sin(a) * outerR
-      );
-      sg.addColorStop(0, '#bbb');
-      sg.addColorStop(1, '#555');
-      ctx.fillStyle = sg;
-      ctx.fill();
-    }
-  }
-
-  // Center cap
-  ctx.beginPath();
-  ctx.arc(x, y, r * 0.12, 0, Math.PI * 2);
-  ctx.fillStyle = '#222';
-  ctx.fill();
-  // Mercedes star on cap
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI * 2 - Math.PI / 2;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + Math.cos(a) * r * 0.1, y + Math.sin(a) * r * 0.1);
-    ctx.strokeStyle = '#c8a95b';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  // Brake disc/caliper peek
-  ctx.beginPath();
-  ctx.arc(x, y, r * 0.52, 0, Math.PI * 2);
-  ctx.strokeStyle = '#444';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  if (state.extras.has(0)) {
-    // Carbon ceramic brakes - orange calipers
-    ctx.beginPath();
-    ctx.arc(x, y + r * 0.35, r * 0.15, 0, Math.PI * 2);
-    ctx.fillStyle = '#e8620a';
-    ctx.fill();
-    ctx.font = `bold ${r * 0.12}px sans-serif`;
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'center';
-    ctx.fillText('AMG', x, y + r * 0.39);
-  }
-}
-
-function drawHeadlights(ctx, cx, cy, type, color) {
-  const xOff = type === 'suv' ? 270 : type === 'sportscar' || type === 'hypercar' ? 275 : 265;
-  const yOff = type === 'suv' ? -15 : type === 'sportscar' ? -10 : -22;
-
-  // DRL
-  ctx.beginPath();
-  ctx.moveTo(cx + xOff - 20, cy + yOff - 8);
-  ctx.lineTo(cx + xOff + 5, cy + yOff - 5);
-  ctx.lineTo(cx + xOff + 5, cy + yOff + 5);
-  ctx.lineTo(cx + xOff - 18, cy + yOff + 8);
-  ctx.closePath();
-  const hlG = ctx.createLinearGradient(cx + xOff - 20, 0, cx + xOff + 5, 0);
-  hlG.addColorStop(0, 'rgba(255,255,220,0.9)');
-  hlG.addColorStop(1, 'rgba(255,220,100,0.6)');
-  ctx.fillStyle = hlG;
-  ctx.fill();
-
-  // Glow
-  ctx.beginPath();
-  ctx.arc(cx + xOff - 5, cy + yOff, 12, 0, Math.PI * 2);
-  const glow = ctx.createRadialGradient(cx + xOff - 5, cy + yOff, 0, cx + xOff - 5, cy + yOff, 12);
-  glow.addColorStop(0, 'rgba(255,255,200,0.3)');
-  glow.addColorStop(1, 'rgba(255,255,200,0)');
-  ctx.fillStyle = glow;
-  ctx.fill();
-}
-
-function drawTaillights(ctx, cx, cy, type) {
-  const xOff = type === 'suv' ? -265 : type === 'sportscar' || type === 'hypercar' ? -270 : -260;
-  const yOff = type === 'suv' ? -12 : -18;
-
-  ctx.beginPath();
-  ctx.moveTo(cx + xOff, cy + yOff - 8);
-  ctx.lineTo(cx + xOff + 20, cy + yOff - 5);
-  ctx.lineTo(cx + xOff + 18, cy + yOff + 7);
-  ctx.lineTo(cx + xOff - 2, cy + yOff + 9);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(200,20,20,0.9)';
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(cx + xOff + 10, cy + yOff, 10, 0, Math.PI * 2);
-  const tglow = ctx.createRadialGradient(cx + xOff + 10, cy + yOff, 0, cx + xOff + 10, cy + yOff, 10);
-  tglow.addColorStop(0, 'rgba(220,0,0,0.3)');
-  tglow.addColorStop(1, 'rgba(220,0,0,0)');
-  ctx.fillStyle = tglow;
-  ctx.fill();
-}
-
-function drawGrille(ctx, cx, cy, type, color) {
-  const gx = cx + 250;
-  const gy = cy + 5;
-  const w = 30, h = 22;
-
-  if (type === 'suv' || type === 'sedan' || type === 'coupe') {
-    // Panamericana-style grille slats
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-      ctx.roundRect(gx - 3, gy - h/2 + i*(h/5), w, h/5 - 1, 1);
-      ctx.fillStyle = state.extras.has(1) ? '#111' : darkenColor(color.hex, 60);
-      ctx.fill();
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-    }
-  }
-}
-
-function drawNightPackage(ctx, cx, cy, type) {
-  // Dark trim overlay on window surrounds
-  ctx.save();
-  ctx.globalAlpha = 0.7;
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = 4;
-  if (type !== 'roadster') {
-    ctx.beginPath();
-    ctx.moveTo(cx - 190, cy - 60);
-    ctx.lineTo(cx - 150, cy - 18);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx + 175, cy - 58);
-    ctx.lineTo(cx + 145, cy - 22);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawCarbonAccents(ctx, cx, cy, type) {
-  // Carbon fibre hood stripe
-  ctx.save();
-  ctx.globalAlpha = 0.85;
-  const stripeW = type === 'sportscar' || type === 'hypercar' ? 28 : 22;
-  const cg = ctx.createLinearGradient(cx - stripeW, 0, cx + stripeW, 0);
-  cg.addColorStop(0, 'transparent');
-  cg.addColorStop(0.2, 'rgba(30,30,30,0.9)');
-  cg.addColorStop(0.5, 'rgba(20,20,20,0.95)');
-  cg.addColorStop(0.8, 'rgba(30,30,30,0.9)');
-  cg.addColorStop(1, 'transparent');
-  ctx.fillStyle = cg;
-
-  const top = type === 'suv' ? cy - 115 : type === 'sportscar' ? cy - 75 : cy - 102;
-  ctx.fillRect(cx - stripeW, top, stripeW * 2, 60);
-
-  // Carbon weave texture
-  ctx.globalAlpha = 0.15;
-  for (let y = top; y < top + 60; y += 4) {
-    for (let x = cx - stripeW; x < cx + stripeW; x += 4) {
-      ctx.beginPath();
-      ctx.rect(x, y, 2, 2);
-      ctx.fillStyle = (Math.floor(x/4) + Math.floor(y/4)) % 2 === 0 ? '#555' : '#111';
-      ctx.fill();
-    }
-  }
-  ctx.restore();
-}
-
-function drawReflection(ctx, W, H, cy, color, type) {
-  ctx.save();
-  ctx.globalAlpha = 0.12;
-  ctx.scale(1, -0.25);
-  ctx.translate(0, -(cy + 85) * 4);
-  carBodyPath(ctx, W, H, cy, type);
-  ctx.fillStyle = color.hex;
-  ctx.fill();
-  ctx.restore();
-}
-
-// ─────────────────────────────────────────────
-//  INFO & PRICE
-// ─────────────────────────────────────────────
-function updateInfo(model) {
-  const perf = PERFORMANCE[state.perfIdx];
-  const hp = model.hp + Math.round(model.hp * perf.boost / 100);
-  const torq = model.torque + Math.round(model.torque * perf.boost / 100);
-  const zeroSixty = (4.8 - (hp / 1200) * 3.5 - state.perfIdx * 0.15).toFixed(1);
-
-  const nameParts = state.model.replace(' AMG', '').split(' ');
-  const lastName = nameParts.pop();
-  document.getElementById('carName').innerHTML = `${nameParts.join(' ')} <strong>${lastName}</strong>`;
-  document.getElementById('carYear').textContent = `${state.year} Model Year`;
-
-  document.getElementById('specsBar').innerHTML = `
-    <div class="spec-item"><div class="spec-value">${hp}</div><div class="spec-label">Horsepower</div></div>
-    <div class="spec-item"><div class="spec-value">${torq}</div><div class="spec-label">lb-ft Torque</div></div>
-    <div class="spec-item"><div class="spec-value">${Math.max(2.0, zeroSixty)}s</div><div class="spec-label">0-60 mph</div></div>
-    <div class="spec-item"><div class="spec-value">${model.weight.toLocaleString()}</div><div class="spec-label">lbs Weight</div></div>
-  `;
-
-  // Price
-  let total = model.base;
-  total += COLORS[state.colorIdx].price;
-  total += WHEELS[state.wheelIdx].price;
-  total += INTERIORS[state.interiorIdx].price;
-  total += PERFORMANCE[state.perfIdx].price;
-  state.extras.forEach(i => { total += EXTRAS[i].price; });
-
-  document.getElementById('totalPrice').textContent = '$' + total.toLocaleString();
-  document.getElementById('summaryItems').innerHTML = `
-    <div class="summary-item">Color: <strong>${COLORS[state.colorIdx].name}</strong></div>
-    <div class="summary-item">Wheels: <strong>${WHEELS[state.wheelIdx].name}</strong></div>
-    <div class="summary-item">Interior: <strong>${INTERIORS[state.interiorIdx].name}</strong></div>
-    <div class="summary-item">Performance: <strong>${PERFORMANCE[state.perfIdx].name}</strong></div>
-    <div class="summary-item">Options: <strong>${state.extras.size} selected</strong></div>
-  `;
-}
-
-// ─────────────────────────────────────────────
-//  SAVE
-// ─────────────────────────────────────────────
-function saveConfig() {
-  const cfg = {
-    year: state.year,
-    model: state.model,
-    color: COLORS[state.colorIdx].name,
-    wheels: WHEELS[state.wheelIdx].name,
-    interior: INTERIORS[state.interiorIdx].name,
-    performance: PERFORMANCE[state.perfIdx].name,
-    extras: [...state.extras].map(i => EXTRAS[i].name),
-    tint: state.tint + '%',
-    ride: state.ride + 'mm',
-  };
-
-  const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `AMG_${state.year}_${state.model.replace(/\s+/g,'-')}.json`;
-  a.click();
-  showToast('Configuration saved!');
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-// ─────────────────────────────────────────────
-//  COLOR UTILS
-// ─────────────────────────────────────────────
-function hexToRgb(hex) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return { r, g, b };
-}
-
-function lightenColor(hex, amt) {
-  const { r, g, b } = hexToRgb(hex);
-  return `rgb(${Math.min(255,r+amt)},${Math.min(255,g+amt)},${Math.min(255,b+amt)})`;
-}
-
-function darkenColor(hex, amt) {
-  const { r, g, b } = hexToRgb(hex);
-  return `rgb(${Math.max(0,r-amt)},${Math.max(0,g-amt)},${Math.max(0,b-amt)})`;
-}
 
 // ─────────────────────────────────────────────
 //  START
