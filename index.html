@@ -17,7 +17,7 @@
       --red: #cc2222;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
 
     body {
       background: var(--bg);
@@ -278,7 +278,6 @@
       width: 100%;
       height: auto;
       display: block;
-      filter: drop-shadow(0 20px 60px rgba(0,0,0,0.9));
     }
 
     .car-info {
@@ -398,9 +397,9 @@
     <svg class="logo-star" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="22" cy="22" r="21" stroke="#c8a95b" stroke-width="1.5"/>
       <circle cx="22" cy="22" r="17" stroke="#c8a95b" stroke-width="0.5" opacity="0.4"/>
-      <path d="M22 4 L22 22 L8 36" stroke="#c8a95b" stroke-width="1.8" stroke-linecap="round"/>
-      <path d="M22 4 L22 22 L36 36" stroke="#c8a95b" stroke-width="1.8" stroke-linecap="round"/>
-      <path d="M22 22 L22 40" stroke="#c8a95b" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M22 22 L22 2" stroke="#c8a95b" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M22 22 L39 32" stroke="#c8a95b" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M22 22 L5 32" stroke="#c8a95b" stroke-width="1.8" stroke-linecap="round"/>
     </svg>
     <div>
       <div class="logo-text">Mercedes-<span>AMG</span></div>
@@ -654,7 +653,7 @@ function buildModelSelect() {
     .map(([name]) => name);
   if (!available.includes(state.model)) state.model = available[0] || '';
   sel.innerHTML = available.map(m => `<option value="${m}" ${m===state.model?'selected':''}>${m}</option>`).join('');
-  sel.addEventListener('change', () => { state.model = sel.value; render(); });
+  sel.onchange = () => { state.model = sel.value; render(); };
 }
 
 function buildColorGrid() {
@@ -684,7 +683,7 @@ function updateColorName() {
 function buildWheelGrid() {
   const grid = document.getElementById('wheelGrid');
   grid.innerHTML = WHEELS.map((w, i) => `
-    <button class="opt-btn ${i===state.wheelIdx?'active':''}" onclick="selectWheel(${i})">
+    <button type="button" class="opt-btn ${i===state.wheelIdx?'active':''}" onclick="selectWheel(${i})">
       <span>${w.name}</span>
       <span class="price-tag">${w.price>0?'+$'+w.price.toLocaleString():'Included'}</span>
     </button>
@@ -700,7 +699,7 @@ function selectWheel(i) {
 function buildInteriorGrid() {
   const grid = document.getElementById('interiorGrid');
   grid.innerHTML = INTERIORS.map((it, i) => `
-    <button class="opt-btn ${i===state.interiorIdx?'active':''}" onclick="selectInterior(${i})">
+    <button type="button" class="opt-btn ${i===state.interiorIdx?'active':''}" onclick="selectInterior(${i})">
       <span>${it.name}</span>
       <span class="price-tag">${it.price>0?'+$'+it.price.toLocaleString():'Included'}</span>
     </button>
@@ -716,7 +715,7 @@ function selectInterior(i) {
 function buildPerfGrid() {
   const grid = document.getElementById('perfGrid');
   grid.innerHTML = PERFORMANCE.map((p, i) => `
-    <button class="opt-btn ${i===state.perfIdx?'active':''}" onclick="selectPerf(${i})">
+    <button type="button" class="opt-btn ${i===state.perfIdx?'active':''}" onclick="selectPerf(${i})">
       <span>${p.name}</span>
       <span class="price-tag">${p.price>0?'+$'+p.price.toLocaleString():'Included'}</span>
     </button>
